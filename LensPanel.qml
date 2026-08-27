@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
@@ -27,6 +28,26 @@ Panel {
     readonly property string bazecorCommand: String(setting("bazecorCommand", "bazecor"))
 
     property bool overlayVisible: false
+
+    // Whether bazecorCommand actually resolves. Without this a missing Bazecor
+    // just gives you a button that does nothing: bar.run() hands the command to
+    // a shell, the shell can't find it, and nothing comes back. The window rules
+    // are unaffected either way — they never touch Bazecor.
+    property bool bazecorFound: true
+
+    Process {
+        id: probe
+        stdout: StdioCollector {
+            onStreamFinished: root.bazecorFound = text.trim().length > 0
+        }
+    }
+
+    function checkBazecor() {
+        // -v resolves through PATH the same way bar.run() will, and also
+        // succeeds for an absolute path someone set as bazecorCommand.
+        probe.command = ["bash", "-lc", "command -v " + root.bazecorCommand + " || true"]
+        probe.running = true
+    }
 
     readonly property color foreground: bar ? bar.foreground : Color.foreground
     readonly property color dim: Qt.darker(foreground, 1.55)
@@ -76,9 +97,9 @@ Panel {
     implicitWidth: button.implicitWidth
     implicitHeight: button.implicitHeight
 
-    Component.onCompleted: refreshVisible()
+    Component.onCompleted: { refreshVisible(); checkBazecor() }
 
-    onOpenedChanged: if (opened) refreshVisible()
+    onOpenedChanged: if (opened) { refreshVisible(); checkBazecor() }
 
     Connections {
         target: Hyprland
@@ -139,12 +160,39 @@ Panel {
 
             // Show/hide, the thing most likely to be wanted on opening this.
             Button {
+                visible: root.bazecorFound
                 Layout.fillWidth: true
                 text: root.overlayVisible ? "Hide the overlay" : "Show the overlay"
                 iconText: root.overlayVisible ? "󰛐" : "󰛑"
                 fontFamily: root.fontFamily
                 foreground: root.foreground
                 onClicked: root.toggleLens()
+            }
+
+            // Showing and hiding needs Bazecor; the rules below do not. Say so
+            // rather than leaving a button that quietly does nothing.
+            ColumnLayout {
+                visible: !root.bazecorFound
+                Layout.fillWidth: true
+                spacing: 0
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Can't find " + root.bazecorCommand
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    elide: Text.ElideRight
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Showing and hiding needs Bazecor on your PATH, or bazecorCommand set to it. The settings below work regardless."
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    wrapMode: Text.WordWrap
+                }
             }
 
             PanelSeparator { Layout.fillWidth: true }
