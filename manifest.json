@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.jondkinney.bazecor-lens",
+  "name": "Bazecor Layer Lens",
+  "version": "1.0.0",
+  "author": "Jon Kinney",
+  "license": "MIT",
+  "description": "Makes Bazecor's Layer Lens overlay behave like an overlay on Hyprland: floating, following you across workspaces, and bordered in your theme.",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "service": {
+    "displayName": "Bazecor Layer Lens",
+    "description": "Window rules for Bazecor's Layer Lens overlay. Wayland gives an app no way to place or pin its own window, so the compositor has to be told \u2014 this keeps that in one place instead of hand-edited Hyprland config.",
+    "defaults": {
+      "floatOverlay": true,
+      "pinOverlay": true,
+      "themedBorder": true
+    },
+    "schema": [
+      {
+        "key": "floatOverlay",
+        "type": "boolean",
+        "label": "Keep the overlay floating",
+        "defaultValue": true,
+        "description": "Stops the keyboard overlay being tiled into your layout. Bazecor asks to float by using a fixed size, but that can lose a race at startup \u2014 this settles it."
+      },
+      {
+        "key": "pinOverlay",
+        "type": "boolean",
+        "label": "Overlay follows you across workspaces",
+        "defaultValue": true,
+        "description": "An overlay you can only see on one workspace is not much of an overlay. Wayland has no way for the app to ask for this itself, so the rule lives here."
+      },
+      {
+        "key": "themedBorder",
+        "type": "boolean",
+        "label": "Border in your theme colour",
+        "defaultValue": true,
+        "description": "Uses the current Omarchy theme's active border colour while the overlay is focused, and no border at all when it is not. Re-read whenever you change theme."
+      }
+    ]
+  }
+}
