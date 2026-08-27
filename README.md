@@ -132,12 +132,17 @@ chmod +x install-omarchy.sh
 ./install-omarchy.sh Bazecor-1.10.0-x64.AppImage
 ```
 
-The script puts the AppImage somewhere stable, symlinks it as `bazecor` on your
-`PATH` — which is what this plugin's show/hide button runs — and adds a launcher
-entry. An AppImage does none of that for itself. You can skip the script and
-just run the AppImage, but then set `bazecorCommand` to its full path in this
-plugin's entry in `~/.config/omarchy/shell.json`, or the show/hide button will
-tell you it can't find Bazecor.
+The script copies the AppImage to `~/.local/share/bazecor/Bazecor.AppImage`,
+symlinks it as `~/.local/bin/bazecor` — which is what this plugin's show/hide
+button runs — and writes a launcher entry to
+`~/.local/share/applications/bazecor.desktop`. An AppImage does none of that
+for itself. It prints the same list when it finishes, along with the one line
+that undoes all of it.
+
+You can skip the script and just run the AppImage, but then set
+`bazecorCommand` to its full path in this plugin's entry in
+`~/.config/omarchy/shell.json`, or the show/hide button will tell you it can't
+find Bazecor.
 
 `SHA256SUMS` is published alongside it if you want to check the download.
 
