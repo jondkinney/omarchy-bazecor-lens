@@ -8,6 +8,38 @@ application cannot float, pin, or place its own window — those are the
 compositor's to decide — so Bazecor cannot make its own overlay behave like one
 no matter what it does internally. This plugin supplies the missing half.
 
+## Install
+
+```bash
+omarchy plugin add https://github.com/jondkinney/omarchy-bazecor-lens
+omarchy bar move io.github.jondkinney.bazecor-lens --section right
+omarchy restart shell
+```
+
+The restart matters: the service half only starts on a full shell restart,
+and `rescanPlugins` alone will not bring it up.
+
+Bazecor needs to be reachable as `bazecor` for the show/hide button. A
+packaged install already is; for a local build, either link it onto your PATH
+or set `bazecorCommand` in the plugin's entry in `~/.config/omarchy/shell.json`
+to the binary's full path.
+
+## Remove
+
+```bash
+omarchy plugin remove io.github.jondkinney.bazecor-lens
+omarchy restart shell
+```
+
+That takes the plugin and its bar entry with it. Nothing is left behind
+elsewhere: the plugin never writes to your Hyprland config, and its window
+rules are applied at runtime, so they are gone the moment the shell stops.
+If you installed the optional launcher entry, remove that too:
+
+```bash
+rm ~/.local/share/applications/omarchy-bazecor-lens.desktop
+```
+
 ## What it does
 
 | Setting | Default | Effect |
