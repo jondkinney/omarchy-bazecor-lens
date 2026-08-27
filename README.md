@@ -111,4 +111,47 @@ neither rule matches on class alone.
 
 ## Requires
 
-Bazecor with Layer Lens, and Hyprland 0.55+ (the Lua configuration API).
+Hyprland 0.55+ (for the Lua configuration API), and a build of Bazecor that
+works on Wayland.
+
+### You need my fork of Bazecor, for now
+
+Layer Lens does not really work on Wayland in released Bazecor. The overlay
+cannot be resized, the Lens key needs several presses before the overlay
+appears, and once the overlay window is gone neither the key nor the tray item
+brings it back. Those are all fixed in a pull request that is open upstream:
+
+**https://github.com/Dygmalab/Bazecor/pull/1142**
+
+Until that lands, run the branch:
+
+```bash
+git clone -b linux-wayland-layer-lens https://github.com/jondkinney/Bazecor.git
+cd Bazecor
+yarn install
+NODE_ENV=production npx electron-forge package
+```
+
+Build it on Node 22.x, the version in `package.json` engines and the one CI
+uses. On Node 26 the Electron postinstall fails silently — it exits 0 partway
+through unpacking, leaving `node_modules/electron` incomplete, and the build
+then dies with "Electron failed to install correctly", which does not point at
+the real cause.
+
+The binary lands in `out/Bazecor-linux-x64/Bazecor`. This plugin's show/hide
+button runs `bazecor`, so put it on your `PATH`:
+
+```bash
+mkdir -p ~/.local/bin
+ln -s "$PWD/out/Bazecor-linux-x64/Bazecor" ~/.local/bin/bazecor
+```
+
+Or leave it where it is and set `bazecorCommand` to the full path in this
+plugin's entry in `~/.config/omarchy/shell.json`.
+
+Layer Lens needs read access to the keyboard over HID. Bazecor offers to
+install the udev rules for you the first time it starts and cannot reach the
+board; accept, and replug the keyboard.
+
+Once the PR is merged, any release containing it will do and none of this is
+needed — the plugin does not care how Bazecor got there.
