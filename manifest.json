@@ -7,10 +7,12 @@
   "license": "MIT",
   "description": "Makes Bazecor's Layer Lens overlay behave like an overlay on Hyprland: floating, following you across workspaces, and bordered in your theme.",
   "kinds": [
-    "service"
+    "service",
+    "bar-widget"
   ],
   "entryPoints": {
-    "service": "Service.qml"
+    "service": "Service.qml",
+    "barWidget": "LensPanel.qml"
   },
   "service": {
     "displayName": "Bazecor Layer Lens",
@@ -49,6 +51,25 @@
         "label": "Reopen the overlay where you left it",
         "defaultValue": true,
         "description": "Bazecor hides Layer Lens by unmapping its window, and a Wayland app cannot ask to be placed anywhere, so the compositor otherwise picks a new spot each time. This watches where you put it and puts it back."
+      }
+    ]
+  },
+  "barWidget": {
+    "displayName": "Bazecor Layer Lens",
+    "description": "Toggle Bazecor's Layer Lens overlay; right click for its settings.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "bazecorCommand": "bazecor"
+    },
+    "schema": [
+      {
+        "key": "bazecorCommand",
+        "type": "string",
+        "label": "Bazecor command",
+        "defaultValue": "bazecor",
+        "description": "How to run Bazecor. A packaged install is on PATH; point this at the binary for a local build."
       }
     ]
   }
