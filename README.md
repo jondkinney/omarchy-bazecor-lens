@@ -34,6 +34,30 @@ through its single-instance lock — the only route in on Wayland, where a
 global shortcut registered by an application never fires. Point
 `bazecorCommand` at your binary if Bazecor is not on `PATH`.
 
+## Launcher entry (optional)
+
+The bar icon and the app launcher are separate mechanisms, and installing a
+plugin never touches `.desktop` files — so link this one yourself if you want
+Layer Lens in the launcher as well as the bar:
+
+```bash
+cp ~/.config/omarchy/plugins/io.github.jondkinney.bazecor-lens/omarchy-bazecor-lens.desktop \
+   ~/.local/share/applications/
+update-desktop-database ~/.local/share/applications
+```
+
+Launching it toggles the overlay; its "Layer Lens settings" action opens the
+drop-down. Remove it again with:
+
+```bash
+rm ~/.local/share/applications/omarchy-bazecor-lens.desktop
+```
+
+`Exec` runs `bazecor` through a login shell, so a Bazecor that lives on your
+`PATH` only via `~/.profile` (a local build linked into `~/.local/bin`, say) is
+still found — a plain `bash -c` inherits the session `PATH`, which typically
+has no `~/.local/bin` in it.
+
 ## Notes
 
 Rules are applied at runtime rather than written into your Hyprland config, so

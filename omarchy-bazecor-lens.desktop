@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Layer Lens
+GenericName=Bazecor keyboard overlay
+Comment=Show or hide Bazecor's Layer Lens overlay
+Icon=input-keyboard
+Exec=bash -lc "bazecor --toggle-lens"
+Terminal=false
+Categories=Utility;
+Keywords=bazecor;dygma;keyboard;layer;lens;overlay;
+Actions=Settings;
+
+[Desktop Action Settings]
+Name=Layer Lens settings
+Exec=bash -lc "omarchy-shell shell toggle io.github.jondkinney.bazecor-lens"
