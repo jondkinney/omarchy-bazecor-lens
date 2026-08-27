@@ -18,7 +18,8 @@
     "defaults": {
       "floatOverlay": true,
       "pinOverlay": true,
-      "themedBorder": true
+      "themedBorder": true,
+      "rememberPosition": true
     },
     "schema": [
       {
@@ -41,6 +42,13 @@
         "label": "Border in your theme colour",
         "defaultValue": true,
         "description": "Uses the current Omarchy theme's active border colour while the overlay is focused, and no border at all when it is not. Re-read whenever you change theme."
+      },
+      {
+        "key": "rememberPosition",
+        "type": "boolean",
+        "label": "Reopen the overlay where you left it",
+        "defaultValue": true,
+        "description": "Bazecor hides Layer Lens by unmapping its window, and a Wayland app cannot ask to be placed anywhere, so the compositor otherwise picks a new spot each time. This watches where you put it and puts it back."
       }
     ]
   }

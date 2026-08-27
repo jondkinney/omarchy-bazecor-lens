@@ -51,6 +51,15 @@ Item {
     property bool floatOverlay: setting("floatOverlay", true) === true
     property bool pinOverlay: setting("pinOverlay", true) === true
     property bool themedBorder: setting("themedBorder", true) === true
+    property bool rememberPosition: setting("rememberPosition", true) === true
+
+    // Last place the overlay was seen. Bazecor hides Layer Lens by unmapping its
+    // window, and a Wayland client cannot ask to be put anywhere, so without
+    // this the compositor picks a fresh spot every time it comes back. Watching
+    // where it sits and feeding that back as a `move` rule is the only way the
+    // overlay can reappear where it was left.
+    property int lastX: -1
+    property int lastY: -1
 
     readonly property string overlayTitle: "Dygma Lens"
     readonly property string mainTitle: "Bazecor"
@@ -91,7 +100,9 @@ local overlayRule = {
   pin = pinOverlay,
   border_color = border,
 }
-hl.window_rule(overlayRule)
+' + ((rememberPosition && lastX >= 0)
+        ? 'overlayRule.move = "' + lastX + ' ' + lastY + '"\n'
+        : '') + 'hl.window_rule(overlayRule)
 
 -- Only the overlay follows you around; the configurator is an ordinary window.
 -- Matched on the exact title because both windows share the Bazecor class, and
@@ -111,13 +122,6 @@ for _, w in ipairs(hl.get_windows()) do
 end
 '
     }
-
-    function apply() {
-        applyProc.command = ["hyprctl", "eval", root.lua()]
-        applyProc.running = true
-    }
-
-    Process { id: applyProc }
 
     function apply() {
         applyProc.command = ["hyprctl", "eval", root.lua()]
@@ -181,20 +185,6 @@ end
 
     Component.onCompleted: {
         applySoon()
-    }
-
-    // Coalesces bursts — a config reload, a settings change and a position
-    // sample can all land together.
-    Timer {
-        id: settle
-        interval: 250
-        onTriggered: root.apply()
-    }
-
-    function applySoon() { settle.restart() }
-
-    Component.onCompleted: {
-        applySoon()
         // Lens may already be on screen if the shell restarted under it.
         adopt.start()
     }
@@ -240,9 +230,27 @@ end
                 root.applySoon()
                 return
             }
-            // Catch Bazecor's windows appearing if it started after we did.
-            if (event.name === "openwindow" && String(event.data || "").indexOf("Bazecor") !== -1)
-                root.applySoon()
+            // openwindow>>address,workspace,class,title
+            if (event.name === "openwindow") {
+                var parts = String(event.data || "").split(",")
+                var title = parts.slice(3).join(",")
+                if (title === root.overlayTitle) {
+                    root.overlayAddress = parts[0] || ""
+                    if (root.rememberPosition)
+                        sampler.running = true
+                    root.sampleOverlay()
+                } else if (parts[2] === root.mainTitle) {
+                    // Bazecor started after we did; make sure it got the rules.
+                    root.applySoon()
+                }
+                return
+            }
+
+            // closewindow>>address — only an address, hence remembering it above.
+            if (event.name === "closewindow" && String(event.data || "").trim() === root.overlayAddress) {
+                sampler.running = false
+                root.overlayAddress = ""
+            }
         }
     }
 }
