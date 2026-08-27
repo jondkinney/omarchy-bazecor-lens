@@ -8,6 +8,10 @@ application cannot float, pin, or place its own window — those are the
 compositor's to decide — so Bazecor cannot make its own overlay behave like one
 no matter what it does internally. This plugin supplies the missing half.
 
+![Layer Lens overlay floating above Bazecor, with the plugin's drop-down open](preview.jpg)
+
+*The overlay up top, the plugin's switches on the right, Bazecor itself below.*
+
 ## Install
 
 ```bash
