@@ -25,7 +25,19 @@ Panel {
         return value === undefined || value === null ? fallback : value
     }
 
-    readonly property string bazecorCommand: String(setting("bazecorCommand", "bazecor"))
+    // bazecorCommand comes from shell.json, which is editable, so it is treated
+    // as untrusted. It names one executable — a bare name looked up on PATH, or
+    // an absolute path — and nothing else. Anything outside that shape is
+    // refused rather than sanitised, and it is never handed to a shell: see
+    // resolveProc and toggleProc, which pass it as an argv element.
+    readonly property string configuredCommand: String(setting("bazecorCommand", "bazecor"))
+
+    readonly property bool commandWellFormed:
+        /^(?:[A-Za-z0-9._][A-Za-z0-9._+-]*|\/[A-Za-z0-9._+\/-]+)$/.test(root.configuredCommand)
+
+    // Absolute path of the executable once resolved, or "" if it could not be.
+    // Only ever set from resolveProc's output, never from the setting directly.
+    property string resolvedPath: ""
 
     property bool overlayVisible: false
 
@@ -35,18 +47,28 @@ Panel {
     // are unaffected either way — they never touch Bazecor.
     property bool bazecorFound: true
 
+    // `which` takes the name as an argv element, so no shell parses it and
+    // metacharacters in the setting are just characters in a filename that
+    // will not be found. It prints the absolute path it resolved.
     Process {
-        id: probe
+        id: resolveProc
         stdout: StdioCollector {
-            onStreamFinished: root.bazecorFound = text.trim().length > 0
+            onStreamFinished: {
+                var line = text.trim().split("\n")[0] || ""
+                root.resolvedPath = line.indexOf("/") === 0 ? line : ""
+                root.bazecorFound = root.resolvedPath.length > 0
+            }
         }
     }
 
     function checkBazecor() {
-        // -v resolves through PATH the same way bar.run() will, and also
-        // succeeds for an absolute path someone set as bazecorCommand.
-        probe.command = ["bash", "-lc", "command -v " + root.bazecorCommand + " || true"]
-        probe.running = true
+        if (!root.commandWellFormed) {
+            root.resolvedPath = ""
+            root.bazecorFound = false
+            return
+        }
+        resolveProc.command = ["/usr/bin/which", "--", root.configuredCommand]
+        resolveProc.running = true
     }
 
     readonly property color foreground: bar ? bar.foreground : Color.foreground
@@ -68,10 +90,17 @@ Panel {
     // Relaunching Bazecor with the flag reaches the running instance through its
     // single-instance lock. It is the only way in: a global shortcut registered
     // by the app never fires under Wayland.
+    //
+    // Deliberately not bar.run(), which hands a string to `bash -lc`. This runs
+    // the resolved absolute path as argv[0] with the flag as argv[1], so no
+    // shell sees the value from shell.json at any point.
+    Process { id: toggleProc }
+
     function toggleLens() {
-        if (!bar)
+        if (!root.resolvedPath)
             return
-        bar.run(root.bazecorCommand + " --toggle-lens")
+        toggleProc.command = [root.resolvedPath, "--toggle-lens"]
+        toggleProc.running = true
         settleToggle.restart()
     }
 
@@ -91,11 +120,6 @@ Panel {
             + "&& mv /tmp/.bazecor-lens.$$ ~/.config/omarchy/shell.json"
         bar.run(cmd)
     }
-
-    // A bar widget is sized by its content — without this the widget is zero
-    // wide and simply never appears, with nothing logged to say so.
-    implicitWidth: button.implicitWidth
-    implicitHeight: button.implicitHeight
 
     Component.onCompleted: { refreshVisible(); checkBazecor() }
 
