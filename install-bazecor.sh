@@ -74,15 +74,27 @@ mkdir -p -- "$APP_DIR" "$BIN_DIR" "$DESKTOP_DIR"
 install -m 755 -- "$SRC" "$APP_DIR/Bazecor.AppImage"
 ln -sfn -- "$APP_DIR/Bazecor.AppImage" "$BIN_DIR/bazecor"
 
-# Written to a temp file in the same directory and renamed into place. A plain
+# Written through a descriptor that stays open, then renamed into place. A plain
 # redirect to the destination would follow a symlink sitting at that path and
-# truncate whatever it points at.
+# truncate whatever it points at. Creating the temporary with mktemp and then
+# reopening its name to chmod and to write it has a smaller version of the same
+# problem: another process of this user can swap that entry for a symlink in
+# between. So the name is generated, created O_EXCL on a held descriptor, and
+# permissioned and written through that descriptor only. It is confirmed to be
+# the same file the name still refers to immediately before the rename.
 [[ -d $DESKTOP_DIR && ! -L $DESKTOP_DIR ]] || die "$DESKTOP_DIR is not a real directory"
-DESKTOP_TMP=$(mktemp -- "$DESKTOP_DIR/.bazecor.desktop.XXXXXXXX")
+DESKTOP_TMP=$(mktemp -u -- "$DESKTOP_DIR/.bazecor.desktop.XXXXXXXX")
+# noclobber makes this an O_CREAT|O_EXCL open, so an entry planted at that name
+# is a failure rather than something to write into. The cleanup trap is armed
+# only once the create has succeeded, so a refusal here never removes a file
+# this script did not create.
+set -C
+exec {desktop_fd}> "$DESKTOP_TMP" || die "cannot create $DESKTOP_TMP"
+set +C
 trap 'rm -f -- "$DESKTOP_TMP"' EXIT
-chmod 644 -- "$DESKTOP_TMP"
+chmod 644 -- "/proc/self/fd/$desktop_fd"
 
-cat > "$DESKTOP_TMP" <<EOF
+cat >&"$desktop_fd" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Bazecor
@@ -106,6 +118,9 @@ Name=Toggle Layer Lens
 Exec=$APP_DIR/Bazecor.AppImage --toggle-lens
 EOF
 
+[[ "$(stat -Lc '%d:%i' "/proc/self/fd/$desktop_fd")" == "$(stat -c '%d:%i' -- "$DESKTOP_TMP" 2>/dev/null)" ]] \
+  || die "$DESKTOP_TMP was replaced while it was being written"
+exec {desktop_fd}>&-
 mv -f -- "$DESKTOP_TMP" "$DESKTOP_FILE"
 trap - EXIT
 
