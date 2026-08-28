@@ -56,9 +56,14 @@ else
   trap 'rm -rf -- "$TMP"' EXIT
   echo "Downloading $BAZECOR_ASSET $BAZECOR_VERSION"
   # --proto '=https' refuses to be redirected onto a plaintext scheme.
+  # Firm timeouts so an unavailable or stalled asset fails instead of hanging:
+  # 15s to connect, and the transfer is abandoned if it manages under 1 KB/s
+  # for a minute. --max-time is a generous hard ceiling for a 150 MB file on a
+  # slow link rather than a normal-case limit.
   final=$(curl --proto '=https' --tlsv1.2 -fL --max-redirs 5 \
+      --connect-timeout 15 --speed-limit 1024 --speed-time 60 --max-time 3600 \
       -o "$TMP/$BAZECOR_ASSET" -w '%{url_effective}' "$BAZECOR_URL") \
-    || die "download failed"
+    || die "download failed or timed out"
   host_allowed "$final" || die "download ended up on an unexpected host: $final"
   SRC="$TMP/$BAZECOR_ASSET"
 fi
@@ -69,7 +74,15 @@ mkdir -p -- "$APP_DIR" "$BIN_DIR" "$DESKTOP_DIR"
 install -m 755 -- "$SRC" "$APP_DIR/Bazecor.AppImage"
 ln -sfn -- "$APP_DIR/Bazecor.AppImage" "$BIN_DIR/bazecor"
 
-cat > "$DESKTOP_FILE" <<EOF
+# Written to a temp file in the same directory and renamed into place. A plain
+# redirect to the destination would follow a symlink sitting at that path and
+# truncate whatever it points at.
+[[ -d $DESKTOP_DIR && ! -L $DESKTOP_DIR ]] || die "$DESKTOP_DIR is not a real directory"
+DESKTOP_TMP=$(mktemp -- "$DESKTOP_DIR/.bazecor.desktop.XXXXXXXX")
+trap 'rm -f -- "$DESKTOP_TMP"' EXIT
+chmod 644 -- "$DESKTOP_TMP"
+
+cat > "$DESKTOP_TMP" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Bazecor
@@ -92,6 +105,9 @@ Exec=$APP_DIR/Bazecor.AppImage --hidden
 Name=Toggle Layer Lens
 Exec=$APP_DIR/Bazecor.AppImage --toggle-lens
 EOF
+
+mv -f -- "$DESKTOP_TMP" "$DESKTOP_FILE"
+trap - EXIT
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 
