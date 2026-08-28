@@ -123,28 +123,30 @@ brings it back. Those are all fixed in a pull request that is open upstream:
 
 **https://github.com/Dygmalab/Bazecor/pull/1142**
 
-Until that lands, grab the build:
-
-**https://github.com/jondkinney/Bazecor/releases/latest**
+Until that lands, install the build this plugin was tested against:
 
 ```bash
-chmod +x install-omarchy.sh
-./install-omarchy.sh Bazecor-1.10.0-x64.AppImage
+./install-bazecor.sh
 ```
 
-The script copies the AppImage to `~/.local/share/bazecor/Bazecor.AppImage`,
-symlinks it as `~/.local/bin/bazecor` — which is what this plugin's show/hide
-button runs — and writes a launcher entry to
-`~/.local/share/applications/bazecor.desktop`. An AppImage does none of that
-for itself. It prints the same list when it finishes, along with the one line
-that undoes all of it.
+The version and its SHA-256 are pinned in `install-bazecor.sh` in this
+repository, so what you end up running is fixed by a file you can read here
+rather than by whatever a release currently points at. The download is checked
+against that digest and refused outright if it does not match, before the file
+is ever made executable, and a download that gets redirected off GitHub's own
+hosts is rejected. Already have the AppImage? Pass it as an argument and it is
+verified against the same digest without downloading anything.
 
-You can skip the script and just run the AppImage, but then set
-`bazecorCommand` to its full path in this plugin's entry in
-`~/.config/omarchy/shell.json`, or the show/hide button will tell you it can't
-find Bazecor.
+It installs to `~/.local/share/bazecor/Bazecor.AppImage`, symlinks it as
+`~/.local/bin/bazecor` — which is what this plugin's show/hide button runs —
+and writes `~/.local/share/applications/bazecor.desktop`. An AppImage does none
+of that for itself. It prints that list when it finishes, along with the one
+line that undoes all of it.
 
-`SHA256SUMS` is published alongside it if you want to check the download.
+To run the AppImage yourself instead, set `bazecorCommand` to its full path in
+this plugin's entry in `~/.config/omarchy/shell.json`, or the show/hide button
+will tell you it cannot find Bazecor. That setting takes one executable name or
+absolute path; anything else is refused rather than run.
 
 Layer Lens needs read access to the keyboard over HID. Bazecor offers to
 install the udev rules for you the first time it starts and cannot reach the
