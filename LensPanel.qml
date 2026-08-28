@@ -107,13 +107,13 @@ Panel {
     // Settings live in this plugin's own shell.json entry. The write is done by
     // set-flag.sh next to this file, invoked with the key and value as argv
     // rather than as shell text, so nothing here can be turned into a command.
-    // The script writes through a securely created temp file in the config
-    // directory and renames it into place; the previous version redirected to a
-    // predictable /tmp path, which a symlink planted there could have hijacked.
+    // The script opens shell.json once with O_NOFOLLOW and does everything from
+    // that descriptor, then writes through a securely created temp file in the
+    // same directory and renames it into place.
     Process { id: setFlagProc }
 
     readonly property string setFlagScript:
-        String(Qt.resolvedUrl("set-flag.sh")).replace(/^file:\/\//, "")
+        String(Qt.resolvedUrl("set-flag.py")).replace(/^file:\/\//, "")
 
     function setFlag(key, value) {
         setFlagProc.command = [root.setFlagScript, key, value ? "true" : "false"]
