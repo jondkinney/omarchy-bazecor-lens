@@ -150,26 +150,8 @@ Layer Lens needs read access to the keyboard over HID. Bazecor offers to
 install the udev rules for you the first time it starts and cannot reach the
 board; accept, and replug the keyboard.
 
-<details>
-<summary>Building it yourself instead</summary>
-
-```bash
-git clone -b linux-wayland-layer-lens https://github.com/jondkinney/Bazecor.git
-cd Bazecor
-yarn install
-NODE_ENV=production npx electron-forge package
-```
-
-Build on Node 22.x, the version in `package.json` engines and the one CI uses.
-On Node 26 the Electron postinstall fails silently — it exits 0 partway through
-unpacking, leaving `node_modules/electron` incomplete, and the build then dies
-with "Electron failed to install correctly", which does not point at the real
-cause.
-
-The binary lands in `out/Bazecor-linux-x64/Bazecor`; symlink that as `bazecor`
-or point `bazecorCommand` at it.
-
-</details>
+Prefer to build it yourself? Bazecor's own README covers the build, and the
+release notes name the exact commit the AppImage was built from.
 
 Once the PR is merged, any release containing it will do and none of this is
 needed — the plugin does not care how Bazecor got there.
