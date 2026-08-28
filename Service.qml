@@ -36,7 +36,8 @@ Item {
                 continue
             for (var i = 0; i < list.length; i++) {
                 var entry = list[i]
-                if (entry && String(entry.id) === pluginId)
+                if (entry && typeof entry.id === "string"
+                        && entry.id.length <= 128 && entry.id === pluginId)
                     return entry
             }
         }
@@ -142,6 +143,14 @@ end
     // Hyprland IPC rather than spawning hyprctl.
     property string overlayAddress: ""
 
+    function boundedString(value, maximum) {
+        return typeof value === "string" && value.length <= maximum ? value : ""
+    }
+
+    function validAddress(value) {
+        return /^0x[0-9a-fA-F]+$/.test(value) ? value : ""
+    }
+
     function sampleOverlay() {
         Hyprland.refreshToplevels()
         var model = Hyprland.toplevels
@@ -153,8 +162,14 @@ end
             var ipc = w.lastIpcObject
             if (!ipc || !ipc.at)
                 return
-            var x = Math.round(ipc.at[0])
-            var y = Math.round(ipc.at[1])
+            var rawX = ipc.at[0]
+            var rawY = ipc.at[1]
+            if (typeof rawX !== "number" || typeof rawY !== "number"
+                    || !isFinite(rawX) || !isFinite(rawY)
+                    || Math.abs(rawX) > 1000000 || Math.abs(rawY) > 1000000)
+                return
+            var x = Math.round(rawX)
+            var y = Math.round(rawY)
             if (x === root.lastX && y === root.lastY)
                 return
             root.lastX = x
@@ -201,7 +216,7 @@ end
             for (var i = 0; i < list.length; i++) {
                 var w = list[i]
                 if (w && w.title === root.overlayTitle) {
-                    root.overlayAddress = w.address ? String(w.address) : ""
+                    root.overlayAddress = root.validAddress(root.boundedString(w.address, 128))
                     if (root.rememberPosition)
                         sampler.running = true
                     root.sampleOverlay()
@@ -232,10 +247,15 @@ end
             }
             // openwindow>>address,workspace,class,title
             if (event.name === "openwindow") {
-                var parts = String(event.data || "").split(",")
+                var data = root.boundedString(event.data, 4096)
+                if (!data)
+                    return
+                var parts = data.split(",")
+                if (parts.length < 4)
+                    return
                 var title = parts.slice(3).join(",")
                 if (title === root.overlayTitle) {
-                    root.overlayAddress = parts[0] || ""
+                    root.overlayAddress = root.validAddress(root.boundedString(parts[0], 128))
                     if (root.rememberPosition)
                         sampler.running = true
                     root.sampleOverlay()
@@ -247,7 +267,9 @@ end
             }
 
             // closewindow>>address — only an address, hence remembering it above.
-            if (event.name === "closewindow" && String(event.data || "").trim() === root.overlayAddress) {
+            var closedAddress = root.validAddress(root.boundedString(event.data, 128))
+            if (event.name === "closewindow" && closedAddress.length > 0
+                    && closedAddress === root.overlayAddress) {
                 sampler.running = false
                 root.overlayAddress = ""
             }

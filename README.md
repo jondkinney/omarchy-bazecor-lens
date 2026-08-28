@@ -129,13 +129,16 @@ Until that lands, install the build this plugin was tested against:
 ./install-bazecor.sh
 ```
 
-The version and its SHA-256 are pinned in `install-bazecor.sh` in this
+The version and its SHA-256 are pinned in the installer in this
 repository, so what you end up running is fixed by a file you can read here
 rather than by whatever a release currently points at. The download is checked
 against that digest and refused outright if it does not match, before the file
-is ever made executable, and a download that gets redirected off GitHub's own
-hosts is rejected. Already have the AppImage? Pass it as an argument and it is
-verified against the same digest without downloading anything.
+is ever made executable. Every redirect is checked before the next request and
+may only use HTTPS on GitHub's release hosts. Downloads and local copies have a
+256 MiB ceiling. Already have the AppImage? Pass it as an argument: it is opened
+without following a final symlink, copied once through that held descriptor,
+and the exact staged inode is verified against the same digest before it is
+published.
 
 It installs to `~/.local/share/bazecor/Bazecor.AppImage`, symlinks it as
 `~/.local/bin/bazecor` — which is what this plugin's show/hide button runs —

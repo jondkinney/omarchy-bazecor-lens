@@ -30,10 +30,26 @@ Panel {
     // an absolute path — and nothing else. Anything outside that shape is
     // refused rather than sanitised, and it is never handed to a shell: see
     // resolveProc and toggleProc, which pass it as an argv element.
-    readonly property string configuredCommand: String(setting("bazecorCommand", "bazecor"))
+    readonly property int maximumCommandCharacters: 4096
+    readonly property string configuredCommand: {
+        var value = setting("bazecorCommand", "bazecor")
+        if (typeof value !== "string" || value.length > maximumCommandCharacters)
+            return ""
+        return value
+    }
 
     readonly property bool commandWellFormed:
-        /^(?:[A-Za-z0-9._][A-Za-z0-9._+-]*|\/[A-Za-z0-9._+\/-]+)$/.test(root.configuredCommand)
+        root.configuredCommand.length > 0
+        && /^(?:[A-Za-z0-9._][A-Za-z0-9._+-]*|\/[A-Za-z0-9._+\/-]+)$/.test(root.configuredCommand)
+
+    readonly property string commandForDisplay: {
+        if (!root.configuredCommand)
+            return "the configured Bazecor command"
+        return root.configuredCommand.slice(0, 160).replace(
+            /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g,
+            "�"
+        )
+    }
 
     // Absolute path of the executable once resolved, or "" if it could not be.
     // Only ever set from resolveProc's output, never from the setting directly.
@@ -47,13 +63,19 @@ Panel {
     // are unaffected either way — they never touch Bazecor.
     property bool bazecorFound: true
 
-    // `which` takes the name as an argv element, so no shell parses it and
-    // metacharacters in the setting are just characters in a filename that
-    // will not be found. It prints the absolute path it resolved.
+    // The helper takes the name as an argv element, so no shell parses it, and
+    // guarantees at most 4097 output bytes before StdioCollector sees them.
     Process {
         id: resolveProc
         stdout: StdioCollector {
             onStreamFinished: {
+                // Recheck the helper's output contract before normalization in
+                // this long-lived process.
+                if (text.length > root.maximumCommandCharacters + 1) {
+                    root.resolvedPath = ""
+                    root.bazecorFound = false
+                    return
+                }
                 var line = text.trim().split("\n")[0] || ""
                 root.resolvedPath = line.indexOf("/") === 0 ? line : ""
                 root.bazecorFound = root.resolvedPath.length > 0
@@ -67,7 +89,7 @@ Panel {
             root.bazecorFound = false
             return
         }
-        resolveProc.command = ["/usr/bin/which", "--", root.configuredCommand]
+        resolveProc.command = [root.resolveCommandScript, root.configuredCommand]
         resolveProc.running = true
     }
 
@@ -105,7 +127,7 @@ Panel {
     }
 
     // Settings live in this plugin's own shell.json entry. The write is done by
-    // set-flag.sh next to this file, invoked with the key and value as argv
+    // set-flag.py next to this file, invoked with the key and value as argv
     // rather than as shell text, so nothing here can be turned into a command.
     // The script opens shell.json once with O_NOFOLLOW and does everything from
     // that descriptor, then writes through a securely created temp file in the
@@ -114,6 +136,8 @@ Panel {
 
     readonly property string setFlagScript:
         String(Qt.resolvedUrl("set-flag.py")).replace(/^file:\/\//, "")
+    readonly property string resolveCommandScript:
+        String(Qt.resolvedUrl("resolve-command.py")).replace(/^file:\/\//, "")
 
     function setFlag(key, value) {
         setFlagProc.command = [root.setFlagScript, key, value ? "true" : "false"]
@@ -201,10 +225,13 @@ Panel {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Can't find " + root.bazecorCommand
+                    text: "Can't find " + root.commandForDisplay
+                    textFormat: Text.PlainText
                     color: root.foreground
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.body
+                    maximumLineCount: 1
+                    wrapMode: Text.NoWrap
                     elide: Text.ElideRight
                 }
 
