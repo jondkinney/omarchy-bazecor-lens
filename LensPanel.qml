@@ -104,21 +104,20 @@ Panel {
         settleToggle.restart()
     }
 
-    // Settings live in this plugin's own shell.json entry, so writing one is a
-    // read-modify-write of that entry. jq keeps it to a single atomic pass.
+    // Settings live in this plugin's own shell.json entry. The write is done by
+    // set-flag.sh next to this file, invoked with the key and value as argv
+    // rather than as shell text, so nothing here can be turned into a command.
+    // The script writes through a securely created temp file in the config
+    // directory and renames it into place; the previous version redirected to a
+    // predictable /tmp path, which a symlink planted there could have hijacked.
+    Process { id: setFlagProc }
+
+    readonly property string setFlagScript:
+        String(Qt.resolvedUrl("set-flag.sh")).replace(/^file:\/\//, "")
+
     function setFlag(key, value) {
-        if (!bar)
-            return
-        var cmd = "jq --arg id " + pluginId + " --arg key " + key
-            + " --argjson val " + (value ? "true" : "false")
-            + " 'def patch: map(if .id == $id then . + {($key): $val} else . end);"
-            + " .plugins = ((.plugins // []) | patch)"
-            + " | .bar.layout.left = ((.bar.layout.left // []) | patch)"
-            + " | .bar.layout.center = ((.bar.layout.center // []) | patch)"
-            + " | .bar.layout.right = ((.bar.layout.right // []) | patch)'"
-            + " ~/.config/omarchy/shell.json > /tmp/.bazecor-lens.$$ "
-            + "&& mv /tmp/.bazecor-lens.$$ ~/.config/omarchy/shell.json"
-        bar.run(cmd)
+        setFlagProc.command = [root.setFlagScript, key, value ? "true" : "false"]
+        setFlagProc.running = true
     }
 
     Component.onCompleted: { refreshVisible(); checkBazecor() }
